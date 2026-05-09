@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: noma-agent
+  namespace: noma
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: noma-agent-readonly
+  namespace: noma
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "events", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: noma-agent-readonly
+  namespace: noma
+subjects:
+  - kind: ServiceAccount
+    name: noma-agent
+    namespace: noma
+roleRef:
+  kind: Role
+  name: noma-agent-readonly
+  apiGroup: rbac.authorization.k8s.io

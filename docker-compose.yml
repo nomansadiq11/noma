@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: noma
+      POSTGRES_USER: noma
+      POSTGRES_PASSWORD: noma
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.2
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  agent:
+    build:
+      context: ./agent
+    environment:
+      PORT: 8001
+      KUBECONFIG: /kube/config
+      KUBE_CONTEXT: ${KUBE_CONTEXT:-kind-noma}
+      KUBE_NAMESPACE: ${KUBE_NAMESPACE:-default}
+      KUBE_API_SERVER: ${KUBE_API_SERVER:-}
+      KUBE_SKIP_TLS_VERIFY: ${KUBE_SKIP_TLS_VERIFY:-true}
+    volumes:
+      - ${HOME}/.kube/config:/kube/config:ro
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+      - postgres
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      PORT: 8000
+      AGENT_URL: http://agent:8001
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-llama2:latest}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-http://host.docker.internal:11434}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text:latest}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-knowledge_base}
+      KNOWLEDGE_DIR: /knowledge
+      DATABASE_URL: postgresql://noma:noma@postgres:5432/noma
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./docs:/knowledge:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      - agent
+      - redis
+      - postgres
+      - qdrant
+
+volumes:
+  postgres_data:
+  qdrant_data:
