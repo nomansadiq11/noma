@@ -757,19 +757,6 @@ def diagnose(payload: DiagnoseRequest) -> DiagnoseResponse:
         evidence.append({"tool": "service_issues", "items": service_issues})
         evidence.append({"tool": "pod_summary", "items": pod_details})
 
-        # Handle empty namespace case: if user asked about error but namespace is empty, flag it
-        if error_check_intent and not pods.items and not deployments.items and not services.items:
-            hypotheses_list = [{
-                "rank": 1,
-                "root_cause": f"Service or workload not found in namespace '{namespace}'",
-                "confidence": "high",
-                "evidence": [
-                    f"Namespace '{namespace}' contains: 0 pods, 0 deployments, 0 services",
-                    "User query indicates issue with service, but no resources exist",
-                ],
-                "suggested_action": "1) Verify namespace name is correct; 2) Check if service should be deployed; 3) Verify service definition exists",
-            }]
-
         # Build structured answer
         if hypotheses_list:
             top_hypothesis = hypotheses_list[0]
